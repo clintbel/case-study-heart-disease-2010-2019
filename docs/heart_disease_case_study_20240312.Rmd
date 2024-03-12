@@ -3,7 +3,7 @@ title: "US Heart Disease Mortality Rates - 10 Year Analysis"
 author: "Clint Barnard-El"  
 date: "March 12, 2024"
 output: 
-  github_document:
+  html_document:
   theme: cerulean
   toc: true
   toc_float: true
