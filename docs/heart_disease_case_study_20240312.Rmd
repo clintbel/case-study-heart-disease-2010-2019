@@ -1,0 +1,274 @@
+---
+title: "US Heart Disease Mortality Rates - 10 Year Analysis"  
+author: "Clint Barnard-El"  
+date: "March 12, 2024"
+output: 
+  github_document:
+  theme: cerulean
+  toc: true
+  toc_float: true
+---
+
+### Objective
+
+-   Determine the groups and regions of the US that has been most/least impacted by heart disease mortality rates during the period between 2010-2019
+
+### Data Sources
+
+-   Centers for Disease Control & Prevention (CDC)
+-   [National Vital Statistics System (NVSS)](https://data.cdc.gov/Heart-Disease-Stroke-Prevention/National-Vital-Statistics-System-NVSS-National-Car/kztq-p2jf/about_data)
+-   Period: 2010-2019
+
+
+### R Markdown 
+
+
+#### Load Libraries
+
+```{r}
+library(gridExtra)
+library(maps)
+library(geosphere)
+library(tidyverse)
+library(dtplyr)
+library(readxl)
+library(tidyselect)
+library(janitor)
+library(skimr)
+library(tools)
+```
+
+#### Import, clean dataset
+
+-   Import table from NVSS, clean columns
+
+```{r}
+df_raw <- read_csv("C:/Users/Clint/OneDrive/Documents/Data/cdc_heart_disease/nvss_hd_2010_2020_raw.csv")
+clean_df <- clean_names(df_raw) #lower case all col, no spaces
+print(clean_df)
+
+str(clean_df) #review col structure
+
+#remove NA from table
+clean_df1 <- clean_df[!is.na(clean_df$data_value), ]
+
+```
+
+#### Filter Relevant Data
+
+-   Include data during 2010-2019 (10 years)
+-   Target specific (break_out_category) data by omitting nationwide "overall" data
+-   Include "age-standardized" data since the objective is to compare groups, exclude "crude" type
+-   Include relevant data only (i.e. year, HD type, state, mortality rate, etc.)
+
+```{r}
+df_age1.1 <- clean_df1 %>% #filter 2020, omit 'overall" from break_out, exclude negative #'s, type id "age" = break out category is gender/race only
+  filter(data_value_type_id == "AgeStdz") %>%
+  filter(year_start != "2020") %>%
+  filter(break_out_category != "Overall") %>%
+  filter(data_value_alt > 0)
+print(df_age1.1)
+
+#remove columns outside objective
+df_age1 <- df_age1.1[, c(1:4, 7, 9:10)]
+print(df_age1)
+
+```
+
+#### Clean Filtered Data
+
+-   Rename columns, race groups to ease understanding of values (simple terms)
+-   Group HD types that did not include a specification (i.e. "Stroke")
+
+```{r}
+#rename columns
+new_names <- c("year", "state", "type", "rate", "group", "sub_group")
+colnames(df_age1)[c(2:7)] <- new_names
+print(df_age1)
+
+
+#update type values, verify
+df_age1$type[grepl("^Major |^Diseases of", df_age1$type)] <- "Type Unspecified"
+df_age1$type[grepl("^Acute", df_age1$type)] <- "Heart Attack"
+unique(df_age1$type)
+
+
+#rename sub groups, verify
+df_age1$sub_group[grepl("^Non-Hispanic Wh", df_age1$sub_group)] <- "White"
+df_age1$sub_group[grepl("^Non-Hispanic Bl", df_age1$sub_group)] <- "Black"
+df_age1$sub_group[grepl("^Oth", df_age1$sub_group)] <- "Unknown/Other"
+unique(df_age1$sub_group)
+```
+
+### Summarize Data into 5 distinct tables
+
+##### Summary stats of mortality rates grouped by (1) Gender, (2) Race, (3) Type/Gender, (4) Type/All Groups, (5) Top/Bottom 5 states
+
+-   **Plot 1 - Gender**
+-   Includes mean/min/max rates of both genders
+
+```{r}
+#summarize gender sub_group
+plot1.1 <- df_age1 %>% #------------------------------------- By Gender
+  filter(group == 'Gender') %>%
+  group_by(year, sub_group) %>%
+  summarize(rate_sum = sum(rate),
+            avg_rate = mean(rate),
+            min_rate = min(rate),
+            max_rate = max(rate))
+plot1 <- plot1.1 %>%
+  mutate(avg_rate = round(avg_rate, 1))
+print(plot1)
+```
+
+-   **Plot 2 - Race**
+-   Includes mean/min/max rates of all 4 race groups
+
+```{r}
+#summarize race sub_group
+plot2.1 <- df_age1 %>% #------------------------------------- By Race
+  filter(group == 'Race') %>%
+  group_by(year, sub_group) %>%
+  summarize(rate_sum = sum(rate),
+            avg_rate = mean(rate),
+            min_rate = min(rate),
+            max_rate = max(rate))
+
+  plot2 <- plot2.1 %>%
+    mutate(avg_rate = round(avg_rate, 1))
+  print(plot2)
+```
+
+-   **Plot 3 - Type (All Genders)**
+-   Includes mean rates of all genders
+
+```{r}
+plot3.1 <- df_age1 %>% #------------------------------------- By Type, All Genders
+  filter(group == 'Gender', type != 'Type Unspecified') %>%  #excludes generic types
+  group_by(year, type, sub_group) %>%
+  summarize(avg_rate = mean(rate))
+
+  plot3 <- plot3.1 %>%
+    mutate(avg_rate = round(avg_rate, 1))
+  print(plot3)
+```
+
+-   **Plot 4 - Type (All Groups/Sub-Groups)**
+-   Includes mean rates of population whole
+
+```{r}
+plot4 <- df_age1 %>% #------------------------------------- By Type, Overall
+  filter(type != 'Type Unspecified') %>%  #excludes missing type
+  group_by(year, type) %>%
+  summarize(avg_rate = mean(rate))
+print(plot4)
+```
+
+-   **Plot 5 - Top/Bottom 5 States)**
+-   Includes mean rates of 5 states with lowest and highest avg. mortality rates during total period - Sort table based on avg_rate in ascending order - create table that includes only the top/bottom 5 states (exclude)
+
+```{r}
+plot5.1 <- df_age1 %>% #------------------------------------- By Top/Bottom 5 States
+  filter(state != "DC") %>%
+  group_by(state) %>%
+  summarize(avg_rate = mean(rate))
+print(plot5.1)
+
+plot5.2 <- plot5.1[order(-plot5.1$avg_rate), ] #sort table
+
+top_bottom <- plot5.2 %>% #create new table, top/bottom 5
+  arrange(avg_rate) %>%
+  filter(row_number() <= 5 | row_number() > n() - 5)
+     
+plot5 <- top_bottom 
+print(plot5)
+```
+
+## Create Plots 1-5
+
+### **Plot 1**: Heart Disease Mortality Rate - Gender
+
+-   Visualize avg. mortality rate change during period (all genders)
+
+```{r}
+ggplot(plot1, aes(x = year, y = avg_rate, color = sub_group)) +
+  geom_line() +
+  geom_point() +
+  scale_x_continuous(labels = scales::number_format(accuracy = 1)) + 
+  scale_y_continuous(labels = scales::number_format(accuracy = 1)) +
+  labs(title = "Heart Disease Mortality Rate - Gender",
+       subtitle = "(2010-2019)",
+       x = "Year",
+       y = "Avg Rate per 100K",
+       color = "Gender") +
+  theme_bw()
+
+```
+
+### **Plot 2**: Heart Disease Mortality Rate - Race
+
+-   Visualize avg. mortality rate change during period (all race groups)
+
+```{r}
+ggplot(plot2, aes(x = year, y = avg_rate, color = sub_group)) +
+  geom_line() +
+  geom_point() +
+  scale_x_continuous(labels = scales::number_format(accuracy = 1)) + 
+  scale_y_continuous(labels = scales::number_format(accuracy = 1)) +
+  labs(title = "Heart Disease Mortality Rate - Race",
+       subtitle = "(2010-2019)",
+       x = "Year",
+       y = "Avg Rate per 100K",
+       color = "Race") +
+  theme_bw()
+```
+
+### **Plot 3**: Heart Disease Mortality Rate - Gender+Type
+
+-   Visualize which types of heart disease had the most impact, divide by genders\
+
+```{r}
+ggplot(plot3, aes(x=type, y=avg_rate, fill=type)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  facet_wrap(~ sub_group) +
+  labs(title = "Heart Disease Mortality Rate - Gender+Type",
+       subtitle = "(2010-2019)",
+       x = "Type",
+       y = "Avg Rate per 100K",
+       color = "Gender") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+### **Plot 4**: Heart Disease Mortality Rate - Type (Overall)
+
+-   Visualize mortality rate changes during this period for each heart disease type\
+
+```{r}
+ggplot(plot4, aes(x = year, y = avg_rate, color = type)) +
+  geom_line() +
+  geom_point() +
+  scale_x_continuous(labels = scales::number_format(accuracy = 1)) + 
+  scale_y_continuous(labels = scales::number_format(accuracy = 1)) +
+  labs(title = "Heart Disease Mortality Rate - Type",
+       subtitle = "(2010-2019)",
+       x = "Year",
+       y = "Avg Rate per 100K",
+       color = "Type") +
+  theme_bw()
+```
+
+### **Plot 5**: Heart Disease Mortality Rate - Top/Bottom 5 States
+
+-   Visualize the top and bottom 5 states that had the highest/lowest mortality rates during this period\
+
+```{r}
+ggplot(plot5, aes(x = reorder(state, -avg_rate), y = avg_rate, fill=avg_rate)) + 
+  geom_bar(stat = "identity") +
+  #facet_wrap(~ sub_group) +
+  labs(title = "Heart Disease Mortality Rates - Top/Bottom 5 States",
+       subtitle = "(2010-2019)",
+       x = "State",
+       y = "Avg Rate per 100K",
+       color = "Rate")
+  theme_minimal()
+```
