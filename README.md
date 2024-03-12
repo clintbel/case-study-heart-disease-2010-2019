@@ -31,7 +31,7 @@ R Analysis [(Markdown File)](https://github.com/clintbel/case-study-heart-diseas
 ## Skills Demonstrated
 - Data Cleaning 
 - Descriptive Analysis
-- Data Visualization
+- [Data Visualization](https://github.com/clintbel/case-study-heart-disease-2010-2019/tree/main/docs)
 
 
 ## Dataset
