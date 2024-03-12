@@ -13,26 +13,26 @@ The data was provided by the [Centers for Disease Control & Prevention (CDC)](ht
 
 ## Objective
 
-Identify what specific groups were most/least impacted by heart disease (HD) mortality, the most prevelant types of HD, and the regions during 2010-2019.
+Identify what specific groups were most/least impacted by heart disease (HD) mortality, the most prevalent types of HD, and the regions during 2010-2019.
 
 
-## Applications Used
+## Applications
 - RStudio
 - Google Chrome
 
-## Language Used
+## Language 
 - R
 
 
 ## R Analysis
-R Analysis (Markdown File)
+R Analysis [(Markdown File)](https://github.com/clintbel/case-study-heart-disease-2010-2019/blob/main/heart_disease_case_study_20240312.md)
 
 
-## Skills Used
+## Skills Demonstrated
 - Data Cleaning 
 - Descriptive Analysis
 - Data Visualization
 
 
-## Datasets
-The dataset was exported from the NVSS on 3/4/24 in the form of a .csv file. 
+## Dataset
+The dataset was exported from the [NVSS](https://data.cdc.gov/Heart-Disease-Stroke-Prevention/National-Vital-Statistics-System-NVSS-National-Car/kztq-p2jf/about_data) on 3/4/24 in the form of a [.csv](https://github.com/clintbel/case-study-heart-disease-2010-2019/blob/main/docs/nvss_hd_2010_2020_raw.csv) file. 
